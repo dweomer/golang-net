@@ -650,6 +650,70 @@ func TestAPITransportNewClientConn(t *testing.T) {
 	})
 }
 
+// TestAPITransportClientConnPending tests the ClientConnState.Pending state.
+func TestAPITransportClientConnPending(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		tt := newTestTransport(t, roundTripXNetHTTP2, func(tr2 *http2.Transport) {
+			tr2.StrictMaxConcurrentStreams = true
+		})
+
+		nc := tt.li.newConn()
+		cc, err := tt.tr.NewClientConn(nc)
+		if err != nil {
+			t.Fatalf("NewClientConn: %v", err)
+		}
+
+		tc1 := tt.getConn()
+		tc1.wantFrameType(http2.FrameSettings)
+		tc1.wantFrameType(http2.FrameWindowUpdate)
+		tc1.writeSettings(http2.Setting{
+			ID:  http2.SettingMaxConcurrentStreams,
+			Val: 1,
+		})
+		tc1.wantFrameType(http2.FrameSettings) // ACK
+
+		synctest.Wait()
+		wantClientConnState(t, cc.State(), http2.ClientConnState{
+			MaxConcurrentStreams: 1,
+		})
+
+		// Send a request, consuming the concurrency slot.
+		req1, _ := http.NewRequest("GET", "https://dummy.tld/", nil)
+		rt1 := newTestRoundTrip(t, req1, cc.RoundTrip)
+		tc1.wantFrameType(http2.FrameHeaders)
+		wantClientConnState(t, cc.State(), http2.ClientConnState{
+			MaxConcurrentStreams: 1,
+			StreamsActive:        1,
+		})
+
+		// Send another request, which enters the Pending state.
+		req2, _ := http.NewRequest("GET", "https://dummy.tld/", nil)
+		_ = newTestRoundTrip(t, req2, cc.RoundTrip)
+		tc1.wantIdle()
+		wantClientConnState(t, cc.State(), http2.ClientConnState{
+			MaxConcurrentStreams: 1,
+			StreamsActive:        1,
+			StreamsPending:       1,
+		})
+
+		// First request completes, second starts.
+		tc1.writeHeaders(http2.HeadersFrameParam{
+			StreamID:   1,
+			EndHeaders: true,
+			EndStream:  true,
+			BlockFragment: tc1.makeHeaderBlockFragment(
+				":status", "200",
+			),
+		})
+		rt1.wantStatus(200)
+		tc1.wantFrameType(http2.FrameHeaders)
+		wantClientConnState(t, cc.State(), http2.ClientConnState{
+			MaxConcurrentStreams: 1,
+			StreamsActive:        1,
+		})
+	})
+}
+
 // TestAPIClientConnPing tests the ClientConn.Ping method.
 func TestAPIClientConnPing(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
