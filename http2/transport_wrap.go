@@ -329,7 +329,7 @@ func (cc *ClientConn) state() ClientConnState {
 		StreamsActive:        cc.cc.InFlight() - cc.reserved,
 		StreamsReserved:      cc.reserved,
 		StreamsPending:       cc.pending,
-		MaxConcurrentStreams: uint32(min(cc.maxConcurrent, math.MaxUint32)),
+		MaxConcurrentStreams: uint32(min(int64(cc.maxConcurrent), math.MaxUint32)),
 		LastIdle:             cc.lastIdle,
 	}
 }
