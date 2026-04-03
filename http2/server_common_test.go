@@ -122,9 +122,10 @@ func newServerTester(t testing.TB, handler http.HandlerFunc, opts ...interface{}
 	h1server := &http.Server{}
 	h2server := &Server{}
 	tlsState := tls.ConnectionState{
-		Version:     tls.VersionTLS13,
-		ServerName:  "go.dev",
-		CipherSuite: tls.TLS_AES_128_GCM_SHA256,
+		Version:            tls.VersionTLS13,
+		ServerName:         "go.dev",
+		CipherSuite:        tls.TLS_AES_128_GCM_SHA256,
+		NegotiatedProtocol: "h2",
 	}
 	noConn := false
 	for _, opt := range opts {
@@ -151,6 +152,10 @@ func newServerTester(t testing.TB, handler http.HandlerFunc, opts ...interface{}
 	cli, srv := synctestNetPipe()
 	cli.SetReadDeadline(time.Now())
 	cli.autoWait = true
+	t.Cleanup(func() {
+		cli.Close()
+		srv.Close()
+	})
 
 	st := &serverTester{
 		t:        t,

@@ -16,5 +16,3 @@ func (t *Transport) TestTransport() *http.Transport {
 func (s *Server) TestSetNewConnFunc(f func(*ServerConn)) {
 	panic("ServerConns are not available with http2wrap")
 }
-
-type ServerConn struct{}

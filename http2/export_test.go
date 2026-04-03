@@ -30,7 +30,6 @@ const (
 )
 
 type (
-	ServerConn  = serverConn
 	Stream      = stream
 	StreamState = streamState
 

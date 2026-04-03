@@ -11,6 +11,10 @@ const (
 	InitialWindowSize      = initialWindowSize
 )
 
+type (
+	ServerConn = serverConn
+)
+
 func SummarizeFrame(f Frame) string {
 	return summarizeFrame(f)
 }

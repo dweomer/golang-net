@@ -169,10 +169,16 @@ func newServerTesterWithRealConn(t testing.TB, handler http.HandlerFunc, opts ..
 }
 
 func (st *serverTester) streamExists(id uint32) bool {
+	if st.sc == nil {
+		st.t.Fatalf("serverTester has no ServerConn")
+	}
 	return st.sc.TestStreamExists(id)
 }
 
 func (st *serverTester) streamState(id uint32) StreamState {
+	if st.sc == nil {
+		st.t.Fatalf("serverTester has no ServerConn")
+	}
 	return st.sc.TestStreamState(id)
 }
 
